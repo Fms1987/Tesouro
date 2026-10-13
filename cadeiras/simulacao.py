@@ -139,13 +139,14 @@ def main(dir_part, dir_cand, saida):
                 for n, e in sorted(ent.items()):
                     if e['votos']:
                         w.writerow([cen, uf, n, e['votos'], e['n'], e['qp'], e['s1'], e['s2'], qe])
-    with open(f'{saida}/eleitos_cenario_B.csv', 'w', newline='') as f:
-        w = csv.writer(f)
-        w.writerow(['uf', 'entidade', 'candidato', 'sq', 'partido', 'fase', 'votos'])
-        for uf in CADEIRAS:
-            for nome, sq, fase, v in res['B'][uf][3]:
-                c = cands[uf][sq]
-                w.writerow([uf, nome, c['nome'], sq, c['partido'], fase, v])
+    for cen in 'AB':
+        with open(f'{saida}/eleitos_cenario_{cen}.csv', 'w', newline='') as f:
+            w = csv.writer(f)
+            w.writerow(['uf', 'entidade', 'candidato', 'sq', 'partido', 'fase', 'votos'])
+            for uf in CADEIRAS:
+                for nome, sq, fase, v in res[cen][uf][3]:
+                    c = cands[uf][sq]
+                    w.writerow([uf, nome, c['nome'], sq, c['partido'], fase, v])
     with open(f'{saida}/validacao_cenario_A.txt', 'w') as f:
         for uf, a, b, x, y in comparacao:
             f.write(f'{uf} meu={a} oficial={b} so_meu={x} so_oficial={y}\n')
