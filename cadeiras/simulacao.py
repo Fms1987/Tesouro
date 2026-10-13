@@ -28,21 +28,21 @@ def ler(path):
         yield from csv.DictReader(f, delimiter=';')
 
 
-def carregar(dir_part, dir_cand):
+def carregar(dir_part, dir_cand, cargo='6', ufs=None):
     """Retorna, por UF: votos de legenda por partido, candidatos e entidade atual (A) de cada partido."""
     leg = defaultdict(lambda: defaultdict(int))      # uf -> partido -> votos de legenda válidos
     ent_a = defaultdict(dict)                        # uf -> partido -> entidade (federação ou partido)
-    for uf in CADEIRAS:
+    for uf in (ufs or CADEIRAS):
         for r in ler(f'{dir_part}/votacao_partido_munzona_2026_{uf}.csv'):
-            if r['CD_CARGO'] != '6':
+            if r['CD_CARGO'] != cargo:
                 continue
             p = r['SG_PARTIDO']
             leg[uf][p] += int(r['QT_TOTAL_VOTOS_LEG_VALIDOS'])
             ent_a[uf][p] = r['SG_FEDERACAO'] if r['TP_AGREMIACAO'] == 'Federação' else p
     cands = defaultdict(lambda: defaultdict(lambda: {'v': 0}))  # uf -> sq -> dados
-    for uf in CADEIRAS:
+    for uf in (ufs or CADEIRAS):
         for r in ler(f'{dir_cand}/votacao_candidato_munzona_2026_{uf}.csv'):
-            if r['CD_CARGO'] != '6':
+            if r['CD_CARGO'] != cargo:
                 continue
             c = cands[uf][r['SQ_CANDIDATO']]
             c['v'] += int(r['QT_VOTOS_NOMINAIS_VALIDOS'])
