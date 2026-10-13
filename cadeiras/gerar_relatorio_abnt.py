@@ -27,6 +27,8 @@ LARG = A4[0] - 5 * cm      # margens: esquerda 3, direita 2
 d = pd.read_csv(R + 'cadeiras_por_uf_entidade.csv')
 eA = pd.read_csv(R + 'eleitos_cenario_A.csv')
 eB = pd.read_csv(R + 'eleitos_cenario_B.csv')
+eC = pd.read_csv(R + 'eleitos_cenario_C.csv')
+fC = pd.read_csv(R + 'votos_faltantes_cenario_C.csv')
 fal = pd.read_csv(R + 'votos_faltantes_mais_uma_cadeira.csv')
 perdas = pd.read_csv(R + 'perdas_cenario_B.csv')
 
@@ -60,6 +62,8 @@ NOME = {'PCDOB': 'PCdoB', 'REDE': 'Rede', 'UNIÃO': 'União', 'MISSÃO': 'Missã
 nome = lambda p: NOME.get(p, p)
 cA = eA.groupby('partido').size().to_dict()
 cB = eB.groupby('partido').size().to_dict()
+cC = eC.groupby('partido').size().to_dict()
+assert sum(cC.values()) == 513
 assert sum(cA.values()) == 513 and sum(cB.values()) == 513
 assert set(cA) | set(cB) <= {p for p, _, _, _ in ORDEM}, (set(cA) | set(cB)) - {p for p, _, _, _ in ORDEM}
 # Conferência das categorias com a coluna "Ideologia categórica" da Tabela 1 do artigo.
@@ -286,6 +290,9 @@ class Hemiciclo(Flowable):
 S = []
 tot_A = d[d.cenario == 'A'].groupby('entidade').cadeiras.sum()
 tot_B = d[d.cenario == 'B'].groupby('entidade').cadeiras.sum()
+tot_C = d[d.cenario == 'C'].groupby('entidade').cadeiras.sum()
+c5 = int(tot_C[[i for i in tot_C.index if i.startswith('FEDERACAO')]].sum())
+a5 = int(tot_A[['PT/PC do B/PV', 'PSOL/REDE']].sum())
 a7 = int(tot_A[SETE].sum())
 b7 = int(tot_B[[i for i in tot_B.index if i.startswith('BLOCO')]].sum())
 assert (a7, b7) == (124, 143)
@@ -311,8 +318,8 @@ S += [Paragraph('A eleição para a Câmara dos Deputados adota o sistema propor
                 'fixado em lei complementar, com mínimo de 8 e máximo de 70, e soma 513 (BRASIL, 1988; BRASIL, 1993). Partidos '
                 'reunidos em federação partidária atuam como um único partido para fins de apuração, o que altera o cálculo do '
                 'quociente partidário e das sobras.', CORPO),
-      Paragraph('Este relatório compara dois cenários para a eleição de 2026. No cenário A, aplicam-se as federações '
-                'efetivamente registradas. No cenário B, hipotético, os votos de PT, PSB, PSOL, PDT, PV, PCdoB e Rede são '
+      Paragraph('Este relatório compara três cenários para a eleição de 2026. No cenário A, aplicam-se as federações '
+                'efetivamente registradas. No cenário C, hipotético, apenas PT, PCdoB, PV, PSOL e Rede formam uma federação única. No cenário B, hipotético, os votos de PT, PSB, PSOL, PDT, PV, PCdoB e Rede são '
                 'contabilizados como os de uma única federação em cada unidade da federação. O objetivo é medir quantas '
                 'cadeiras o conjunto de partidos ocuparia em cada cenário, quais legendas cederiam cadeiras e quantos votos '
                 'faltaram ao conjunto para obter uma cadeira adicional.', CORPO),
@@ -338,7 +345,9 @@ S += [Paragraph('2 METODOLOGIA', H1), Paragraph('2.1 Dados', H2),
                 'PRD e Solidariedade. PSB e PDT concorrem isoladamente. No cenário B, os votos de legenda e nominais de PT, '
                 'PCdoB, PV, PSB, PSOL, Rede e PDT são somados em uma única entidade, com lista única de candidatos em cada '
                 'unidade da federação. O total de votos válidos e o número de cadeiras de cada unidade permanecem iguais, de '
-                'modo que o quociente eleitoral não se altera entre os cenários.', CORPO),
+                'modo que o quociente eleitoral não se altera entre os cenários. No cenário C, apenas PT, PCdoB, PV, PSOL e Rede '
+                'formam federação única, com lista única por unidade da federação; PSB e PDT permanecem isolados e as demais '
+                'federações vigentes (PSDB e Cidadania; União e PP; PRD e Solidariedade) são mantidas.', CORPO),
       Paragraph('2.3 Regras de distribuição', H2),
       Paragraph('Aplicaram-se as regras do Código Eleitoral na redação da Lei nº 14.211/2021 (BRASIL, 1965; BRASIL, 2021), '
                 'conforme a seguinte sequência: (a) quociente eleitoral, com arredondamento do art. 106; (b) quociente '
@@ -353,7 +362,7 @@ S += [Paragraph('2 METODOLOGIA', H1), Paragraph('2.1 Dados', H2),
       Paragraph('Três verificações foram realizadas. Primeira, o conjunto de candidatos eleitos calculado no cenário A foi '
                 'comparado ao conjunto de eleitos informado pelo TSE em cada unidade da federação, sem divergência. Segunda, '
                 'uma implementação independente, com aritmética de frações exatas e estruturas de dados distintas, '
-                'reproduziu as cadeiras de 820 combinações de unidade da federação e entidade nos dois cenários. Terceira, '
+                'reproduziu as cadeiras de 1.241 combinações de unidade da federação e entidade nos três cenários. Terceira, '
                 'para os votos faltantes, confirmou-se em cada unidade que o valor encontrado produz a cadeira adicional e '
                 'que os 150 valores imediatamente inferiores, mais cerca de 60 pontos espaçados entre zero e o valor, não '
                 'a produzem. Esta última verificação não passou por implementação independente.', CORPO),
@@ -393,43 +402,44 @@ S += [Paragraph('3 RESULTADOS', H1), Paragraph('3.1 Cadeiras por entidade', H2),
       Paragraph(f'A Tabela 1 apresenta as cadeiras por entidade nos dois cenários. O conjunto de sete partidos passa de {a7} '
                 f'cadeiras no cenário A para {b7} no cenário B, um acréscimo de {b7 - a7}. As demais variações são '
                 f'negativas ou nulas e totalizam uma redução de {b7 - a7} cadeiras.', CORPO)]
-t = pd.concat([tot_A.rename('A'), tot_B.rename('B')], axis=1).fillna(0).astype(int)
-t = t[(t.A > 0) | (t.B > 0)].sort_values(['A', 'B'], ascending=False)
-lin = [['Entidade', 'Cenário A', 'Cenário B', 'Variação']]
+t = pd.concat([tot_A.rename('A'), tot_B.rename('B'), tot_C.rename('C')], axis=1).fillna(0).astype(int)
+t = t[(t.A > 0) | (t.B > 0) | (t.C > 0)].sort_values(['A', 'B', 'C'], ascending=False)
+lin = [['Entidade', 'Cenário A', 'Cenário B', 'Cenário C', 'Var. B', 'Var. C']]
 for n, r in t.iterrows():
-    if n.startswith('BLOCO'):
+    if n.startswith('BLOCO') or n.startswith('FEDERACAO'):
         continue
-    lin.append([ent(n), r.A, r.B, sgn(r.B - r.A)])
-lin.append(['Federação única de sete partidos (cenário B)', 0, b7, sgn(b7)])
-lin.append(['Total', int(t.A.sum()), int(t.B.sum()), '0'])
-S += [legenda('T', 'Cadeiras por entidade, cenários A e B, Brasil, 2026'),
-      tabela(lin, [7.5 * cm, 2.8 * cm, 2.8 * cm, 2.8 * cm], total_ultima=True),
+    lin.append([ent(n), r.A, r.B, r.C, sgn(r.B - r.A), sgn(r.C - r.A)])
+lin.append(['Federação única de sete partidos (cenário B)', 0, b7, 0, sgn(b7), '0'])
+lin.append(['Federação única de cinco partidos (cenário C)', 0, 0, c5, '0', sgn(c5)])
+lin.append(['Total', int(t.A.sum()), int(t.B.sum()), int(t.C.sum()), '0', '0'])
+S += [legenda('T', 'Cadeiras por entidade, cenários A, B e C, Brasil, 2026'),
+      tabela(lin, [7 * cm, 1.8 * cm, 1.8 * cm, 1.8 * cm, 1.8 * cm, 1.8 * cm], total_ultima=True),
       fonte('Elaborada pelo autor com base em TSE (2026). Nota: a variação refere-se à entidade, e a federação única '
-            'do cenário B substitui PT/PCdoB/PV, PSB, PSOL/Rede e PDT.')]
+            'do cenário B substitui PT/PCdoB/PV, PSB, PSOL/Rede e PDT; a do cenário C substitui PT/PCdoB/PV e PSOL/Rede.')]
 
 S += [Paragraph('3.2 Cadeiras por partido', H2),
       Paragraph('A Tabela 2 desagrega as cadeiras por partido. Dentro de uma federação, as cadeiras são ocupadas pelos '
                 'candidatos mais votados da lista conjunta, de modo que a distribuição entre os partidos do conjunto é '
-                'consequência da votação individual e não de cota partidária. A Tabela 3 agrega as cadeiras por categoria ideológica e as figuras 1 e 2 apresentam os '
-                'hemiciclos dos dois cenários.', CORPO)]
-lin = [['Partido', 'Categoria (Bolognesi et al., 2025)', 'Média ponderada', 'Cenário A', 'Cenário B', 'Variação']]
+                'consequência da votação individual e não de cota partidária. A Tabela 3 agrega as cadeiras por categoria ideológica e as figuras 1, 2 e 3 apresentam os '
+                'hemiciclos dos três cenários.', CORPO)]
+lin = [['Partido', 'Categoria (Bolognesi et al., 2025)', 'Média ponderada', 'A', 'B', 'C', 'Var. B', 'Var. C']]
 for p, g, _, m in ORDEM:
-    lin.append([nome(p), g, f'{m:.3f}'.replace('.', ',') if m is not None else 'sem dado', cA.get(p, 0), cB.get(p, 0), sgn(cB.get(p, 0) - cA.get(p, 0))])
-lin.append(['Total', '', '', 513, 513, '0'])
-S += [legenda('T', 'Cadeiras por partido, cenários A e B, Brasil, 2026'),
-      tabela(lin, [3 * cm, 4.2 * cm, 2.4 * cm, 2 * cm, 2 * cm, 2.4 * cm], esq=(0, 1), total_ultima=True),
+    lin.append([nome(p), g, f'{m:.3f}'.replace('.', ',') if m is not None else 'sem dado', cA.get(p, 0), cB.get(p, 0), cC.get(p, 0), sgn(cB.get(p, 0) - cA.get(p, 0)), sgn(cC.get(p, 0) - cA.get(p, 0))])
+lin.append(['Total', '', '', 513, 513, 513, '0', '0'])
+S += [legenda('T', 'Cadeiras por partido, cenários A, B e C, Brasil, 2026'),
+      tabela(lin, [2.6 * cm, 3.6 * cm, 2 * cm, 1.5 * cm, 1.5 * cm, 1.5 * cm, 1.65 * cm, 1.65 * cm], esq=(0, 1), total_ultima=True),
       fonte('Elaborada pelo autor com base em TSE (2026). Nota: partidos ordenados segundo o Quadro 1.')]
 def soma_grupo(c, g):
     return sum(v for p, v in c.items() if GRUPO[p] == g)
 
 
-lin = [['Categoria (Bolognesi et al., 2025)', 'Cenário A', '% A', 'Cenário B', '% B', 'Variação']]
+lin = [['Categoria (Bolognesi et al., 2025)', 'A', 'B', 'C', 'Var. B', 'Var. C']]
 for g in GRUPOS:
-    a_, b_ = soma_grupo(cA, g), soma_grupo(cB, g)
-    lin.append([g, a_, f'{100 * a_ / 513:.1f}'.replace('.', ','), b_, f'{100 * b_ / 513:.1f}'.replace('.', ','), sgn(b_ - a_)])
-lin.append(['Total', 513, '100,0', 513, '100,0', '0'])
-S += [legenda('T', 'Cadeiras por categoria ideológica, cenários A e B, Brasil, 2026'),
-      tabela(lin, [5 * cm, 2.2 * cm, 1.8 * cm, 2.2 * cm, 1.8 * cm, 2 * cm], total_ultima=True),
+    a_, b_, c_ = soma_grupo(cA, g), soma_grupo(cB, g), soma_grupo(cC, g)
+    lin.append([g, a_, b_, c_, sgn(b_ - a_), sgn(c_ - a_)])
+lin.append(['Total', 513, 513, 513, '0', '0'])
+S += [legenda('T', 'Cadeiras por categoria ideológica, cenários A, B e C, Brasil, 2026'),
+      tabela(lin, [5.5 * cm, 2 * cm, 2 * cm, 2 * cm, 2.2 * cm, 2.2 * cm], total_ultima=True),
       fonte('Elaborada pelo autor com base em TSE (2026) e Bolognesi et al. (2025). Nota: nenhum partido com cadeiras '
             'ocupa a categoria Centro; Missão, sem dado, é a única legenda não classificada.')]
 esq3 = (EXE, ESQ, CEE)
@@ -437,6 +447,8 @@ gA = {g: soma_grupo(cA, g) for g in GRUPOS}
 gB = {g: soma_grupo(cB, g) for g in GRUPOS}
 eA3, eB3 = sum(gA[g] for g in esq3), sum(gB[g] for g in esq3)
 assert (eA3, eB3) == (a7, b7)
+gC = {g: soma_grupo(cC, g) for g in GRUPOS}
+assert sum(gC[g] for g in esq3) == c5 + int(tot_C['PSB']) + int(tot_C['PDT'])
 S += [Paragraph((f'Os sete partidos do conjunto ocupam as três categorias à esquerda do centro (Tabela 3), e nenhum partido com '
                 f'cadeiras situa-se na categoria Centro, o que acompanha o achado de desaparecimento do centro ideológico de '
                 f'Bolognesi et al. (2025). As três categorias à esquerda somam {eA3} cadeiras ({f'{100 * eA3 / 513:.1f}'.replace('.', ',')}%) no cenário A e '
@@ -449,6 +461,9 @@ S += [KeepTogether([legenda('F', 'Hemiciclo da Câmara dos Deputados, cenário A
                                          'deputado; partidos ordenados e agrupados conforme Bolognesi et al. (2025) e o Quadro 1; cinza indica partido sem classificação.')]),
       KeepTogether([legenda('F', 'Hemiciclo da Câmara dos Deputados, cenário B (federação única de sete partidos), 2026'),
                     Hemiciclo(cB), fonte('Elaborada pelo autor com base em TSE (2026). Nota: cada ponto representa um '
+                                         'deputado; partidos ordenados e agrupados conforme Bolognesi et al. (2025) e o Quadro 1; cinza indica partido sem classificação.')]),
+      KeepTogether([legenda('F', 'Hemiciclo da Câmara dos Deputados, cenário C (federação única de PT, PCdoB, PV, PSOL e Rede), 2026'),
+                    Hemiciclo(cC), fonte('Elaborada pelo autor com base em TSE (2026). Nota: cada ponto representa um '
                                          'deputado; partidos ordenados e agrupados conforme Bolognesi et al. (2025) e o Quadro 1; cinza indica partido sem classificação.')])]
 
 # 3.3 por UF
@@ -503,12 +518,60 @@ S += [legenda('T', 'Votos que faltaram ao conjunto de sete partidos para uma cad
       tf, fonte('Elaborada pelo autor com base em TSE (2026). Nota: quociente eleitoral e votos das demais entidades '
                 'mantidos fixos; ordenação do menor para o maior déficit absoluto.')]
 
+# 3.6 cenário C
+ganhosC = {}
+cuf = d[(d.cenario == 'C') & d.entidade.str.startswith('FEDERACAO')].set_index('uf').cadeiras
+auf = d[(d.cenario == 'A') & d.entidade.isin(['PT/PC do B/PV', 'PSOL/REDE'])].groupby('uf').cadeiras.sum()
+bC = eC[eC.entidade.str.startswith('FEDERACAO')]
+pvC = bC.pivot_table(index='uf', columns='partido', values='sq', aggfunc='count', fill_value=0)
+colsC = ['PT', 'PSOL', 'PCDOB', 'PV', 'REDE']
+linC = [['UF'] + [nome(p) for p in colsC] + ['Cenário C', 'Cenário A', 'Variação']]
+for u in sorted(d.uf.unique()):
+    g = lambda p: int(pvC.loc[u, p]) if (u in pvC.index and p in pvC.columns) else 0
+    cc, aa = int(cuf.get(u, 0)), int(auf.get(u, 0))
+    ganhosC[u] = cc - aa
+    linC.append([u] + [g(p) for p in colsC] + [cc, aa, sgn(cc - aa)])
+linC.append(['Brasil'] + [int(bC[bC.partido == p].shape[0]) for p in colsC] + [c5, a5, sgn(c5 - a5)])
+assert all(v >= 0 for v in ganhosC.values()) and sum(ganhosC.values()) == c5 - a5
+ufsC = [u for u, v in ganhosC.items() if v > 0]
+pC = d[d.cenario.isin(['A', 'C'])].pivot_table(index=['uf', 'entidade'], columns='cenario', values='cadeiras', fill_value=0).astype(int)
+pC['delta'] = pC.C - pC.A
+perdC = pC[(pC.delta < 0) & ~pC.index.get_level_values(1).isin(['PT/PC do B/PV', 'PSOL/REDE'])].reset_index()
+assert len(perdC) == c5 - a5 and perdC.delta.sum() == -(c5 - a5)
+S += [Paragraph('3.6 Cenário C: federação de PT, PCdoB, PV, PSOL e Rede', H2),
+      Paragraph(f'No cenário C, a federação única de cinco partidos elege {c5} deputados, contra {a5} somados por PT/PCdoB/PV e '
+                f'PSOL/Rede no cenário A, um acréscimo de {c5 - a5}. O ganho ocorre em {len(ufsC)} unidades da federação: '
+                + ', '.join(f'{u} ({sgn(ganhosC[u])})' for u in ufsC) + f'. PSB e PDT mantêm {int(tot_C["PSB"])} e {int(tot_C["PDT"])} '
+                f'cadeiras, sem variação. As demais {c5 - a5} cadeiras mudam de mãos entre as legendas externas (Tabela 8).', CORPO)]
+S += [legenda('T', 'Cadeiras da federação de cinco partidos por unidade da federação, por partido, cenário C, e total do cenário A, 2026'),
+      tabela(linC, [1.6 * cm] + [1.5 * cm] * 5 + [2 * cm, 2 * cm, 2 * cm], total_ultima=True, fonte=8.5),
+      fonte('Elaborada pelo autor com base em TSE (2026). Nota: colunas de partidos referem-se ao cenário C; o cenário A soma '
+            'as entidades PT/PCdoB/PV e PSOL/Rede.')]
+linP = [['UF', 'Entidade', 'Cenário A', 'Cenário C', 'Variação']] + [
+    [r.uf, ent(r.entidade), int(r.A), int(r.C), sgn(r.delta)] for r in perdC.sort_values(['uf', 'entidade']).itertuples()]
+S += [legenda('T', 'Entidades externas à federação que perdem cadeiras no cenário C, por unidade da federação, 2026'),
+      tabela(linP, [2 * cm, 5 * cm, 2.5 * cm, 2.5 * cm, 2.5 * cm], esq=(0, 1)), fonte('Elaborada pelo autor com base em TSE (2026).')]
+linF = [['UF', 'Cadeiras da federação', 'Votos da federação', 'Votos faltantes', '% dos votos da federação',
+         'Próximo candidato (votos)', 'Entidade que perde a cadeira']]
+for r in fC.sort_values('votos_faltantes').itertuples():
+    nm = ' '.join(w.lower() if w.lower() in ('de', 'da', 'do', 'dos', 'das', 'e') else w.capitalize() for w in r.proximo_candidato.split())
+    linF.append([r.uf, r.cadeiras_bloco_B, fmt(r.votos_bloco), fmt(r.votos_faltantes),
+                 f'{r.pct_sobre_votos_bloco:.1f}'.replace('.', ','), f'{nm}, {r.partido} ({fmt(r.votos_do_candidato)})',
+                 ent(r.cadeira_tirada_de)])
+S += [Paragraph('A Tabela 9 apresenta os votos que faltaram à federação de cinco partidos para uma cadeira adicional, pelo '
+                'mesmo método da subseção 2.5.', CORPO),
+      legenda('T', 'Votos que faltaram à federação de cinco partidos para uma cadeira adicional, por unidade da federação, 2026'),
+      tabela(linF, [1.1 * cm, 1.9 * cm, 2.2 * cm, 2.0 * cm, 2.0 * cm, 4.5 * cm, 2.3 * cm], esq=(0, 5, 6), fonte=8.5),
+      fonte('Elaborada pelo autor com base em TSE (2026). Nota: quociente eleitoral e votos das demais entidades mantidos fixos; '
+            'ordenação do menor para o maior déficit absoluto.')]
+
 # --- 4 considerações finais
 S += [Paragraph('4 CONSIDERAÇÕES FINAIS', H1),
       Paragraph(f'Sob a regra simulada, a federação única de sete partidos teria {b7} cadeiras, contra {a7} somadas pelos '
                 f'mesmos partidos nas federações vigentes, um acréscimo de {b7 - a7}. Este relatório não decompõe o ganho '
                 f'entre quociente partidário e sobras. As {n_perd} cadeiras adicionais saem de União e PP, PSD, Republicanos, MDB, '
-                f'Podemos, PL e Novo, conforme a Tabela 5.', CORPO),
+                f'Podemos, PL e Novo, conforme a Tabela 5. No cenário C, a federação de PT, PCdoB, PV, PSOL e Rede teria '
+                f'{c5} cadeiras, contra {a5}, um acréscimo de {c5 - a5}, concentrado em {", ".join(ufsC)}; PSB e PDT não variam.', CORPO),
       Paragraph('Limitações devem ser consideradas. Primeira, os dados são de 11 de outubro de 2026 e podem mudar com o '
                 'julgamento de candidaturas sub judice. Segunda, a regra da segunda rodada de sobras segue a descrição do autor '
                 'e não foi conferida com o inteiro teor do acórdão. Terceira, empates exatos de média ou de votação não '

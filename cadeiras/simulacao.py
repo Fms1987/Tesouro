@@ -1,5 +1,6 @@
 """Distribuição de cadeiras de Deputado Federal 2026 (TSE): cenário A (federações atuais)
-e cenário B (PT, PCdoB, PV, PSB, PSOL, Rede e PDT como uma única federação por UF).
+cenário B (PT, PCdoB, PV, PSB, PSOL, Rede e PDT como uma única federação por UF)
+e cenário C (apenas PT, PCdoB, PV, PSOL e Rede em federação única por UF; PSB e PDT isolados).
 
 Uso: python3 -I simulacao.py <dir_partido_munzona> <dir_candidato_munzona> <dir_saida>
 """
@@ -18,6 +19,8 @@ CADEIRAS = {
 }
 BLOCO_B = {'PT', 'PCDOB', 'PV', 'PSB', 'PSOL', 'REDE', 'PDT'}
 NOME_B = 'BLOCO B (PT/PCdoB/PV/PSB/PSOL/REDE/PDT)'
+BLOCO_C = {'PT', 'PCDOB', 'PV', 'PSOL', 'REDE'}      # cenário C: só estes cinco se federam; PSB e PDT seguem isolados
+NOME_C = 'FEDERACAO C (PT/PCdoB/PV/PSOL/REDE)'
 
 
 def ler(path):
@@ -114,7 +117,7 @@ def distribuir(uf, vagas, leg, cands, mapa, qe_fixo=None):
 def main(dir_part, dir_cand, saida):
     os.makedirs(saida, exist_ok=True)
     leg, cands, ent_a = carregar(dir_part, dir_cand)
-    res = {'A': {}, 'B': {}}
+    res = {'A': {}, 'B': {}, 'C': {}}
     comparacao = []
     for uf, vagas in CADEIRAS.items():
         mapa_a = ent_a[uf]
@@ -122,7 +125,8 @@ def main(dir_part, dir_cand, saida):
         # partidos com candidatos mas sem linha de legenda: erro explícito
         for c in cands[uf].values():
             assert c['partido'] in mapa_a, (uf, c['partido'])
-        for cen, mapa in (('A', mapa_a), ('B', mapa_b)):
+        mapa_c = {p: (NOME_C if p in BLOCO_C else e) for p, e in mapa_a.items()}
+        for cen, mapa in (('A', mapa_a), ('B', mapa_b), ('C', mapa_c)):
             res[cen][uf] = distribuir(uf, vagas, leg[uf], cands[uf], mapa)
         # validação do cenário A contra o resultado oficial do TSE
         mine = {sq for _, sq, _, _ in res['A'][uf][3]}
@@ -133,13 +137,13 @@ def main(dir_part, dir_cand, saida):
     with open(f'{saida}/cadeiras_por_uf_entidade.csv', 'w', newline='') as f:
         w = csv.writer(f)
         w.writerow(['cenario', 'uf', 'entidade', 'votos', 'cadeiras', 'qp', 'sobras1', 'sobras2', 'qe'])
-        for cen in 'AB':
+        for cen in 'ABC':
             for uf in CADEIRAS:
                 qe, _, ent, _ = res[cen][uf]
                 for n, e in sorted(ent.items()):
                     if e['votos']:
                         w.writerow([cen, uf, n, e['votos'], e['n'], e['qp'], e['s1'], e['s2'], qe])
-    for cen in 'AB':
+    for cen in 'ABC':
         with open(f'{saida}/eleitos_cenario_{cen}.csv', 'w', newline='') as f:
             w = csv.writer(f)
             w.writerow(['uf', 'entidade', 'candidato', 'sq', 'partido', 'fase', 'votos'])

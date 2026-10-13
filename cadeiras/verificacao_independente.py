@@ -12,12 +12,14 @@ print('nominais divergentes partido x candidato:',int((a.sub(b,fill_value=0)!=0)
 print('votos validos totais:',int(P.QT_TOTAL_VOTOS_LEG_VALIDOS.sum()+P.QT_VOTOS_NOMINAIS_VALIDOS.sum()))
 CAD=dict(SP=70,MG=53,RJ=46,BA=39,RS=31,PR=30,PE=25,CE=22,MA=18,GO=17,PA=17,SC=16,PB=12,ES=10,PI=10,AL=9,AM=8,MT=8,MS=8,RN=8,RO=8,SE=8,AC=8,AP=8,DF=8,RR=8,TO=8)
 B7={'PT','PCDOB','PV','PSB','PSOL','REDE','PDT'}
+C5={'PT','PCDOB','PV','PSOL','REDE'}
 fm=P.drop_duplicates(['SG_UF','SG_PARTIDO'])
 fm['ea']=fm.SG_FEDERACAO.where(fm.TP_AGREMIACAO=='Federação',fm.SG_PARTIDO)
 fm['eb']=fm.ea.where(~fm.SG_PARTIDO.isin(B7),'B')
+fm['ec']=fm.ea.where(~fm.SG_PARTIDO.isin(C5),'C')
 out=[]
 for uf,N in CAD.items():
-  for cen,col in (('A','ea'),('B','eb')):
+  for cen,col in (('A','ea'),('B','eb'),('C','ec')):
     m=fm[fm.SG_UF==uf].set_index('SG_PARTIDO')[col]
     Pu=P[P.SG_UF==uf];Cu=C[C.SG_UF==uf].copy();Cu['e']=Cu.SG_PARTIDO.map(m)
     V=Pu.assign(e=Pu.SG_PARTIDO.map(m)).groupby('e').QT_TOTAL_VOTOS_LEG_VALIDOS.sum().add(Cu.groupby('e').v.sum(),fill_value=0).astype(int)
@@ -34,7 +36,7 @@ for uf,N in CAD.items():
         _,e=max(c);s[e]+=1;rem-=1
     out+= [(cen,uf,e,n) for e,n in s.items() if V[e]]
 ind=pd.DataFrame(out,columns=['cenario','uf','e','s'])
-d=pd.read_csv('out/cadeiras_por_uf_entidade.csv');d['e']=d.entidade.where(~d.entidade.str.startswith('BLOCO'),'B')
+d=pd.read_csv('out/cadeiras_por_uf_entidade.csv');d['e']=d.entidade.where(~d.entidade.str.startswith('BLOCO'),'B');d['e']=d.e.where(~d.e.str.startswith('FEDERACAO'),'C')
 m=d.merge(ind,on=['cenario','uf','e'],how='outer')
 pd.set_option("display.width",250);mm=m[m.cadeiras!=m.s];print(len(m),len(mm));print(mm[["cenario","uf","e","votos","cadeiras","qp","sobras1","sobras2","qe","s"]].head(12).to_string())
 # perdas B
