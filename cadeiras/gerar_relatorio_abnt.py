@@ -33,11 +33,12 @@ perdas = pd.read_csv(R + 'perdas_cenario_B.csv')
 SETE = ['PT/PC do B/PV', 'PSOL/REDE', 'PSB', 'PDT']
 # Classificação de Zucco Jr. (2011): ordem esquerda-direita estimada para 2009 (Tabela 2, p. 42) e grupos (conclusão, p. 57-58).
 # Correspondência com os partidos de 2026 por linhagem partidária (premissa do autor deste relatório).
-ESQ, CEN, DIR, NC = 'Esquerda', 'Centro', 'Direita', 'Não classificado'
+ESQ, CEN, DIR, EXD, NC = 'Esquerda', 'Centro', 'Direita', 'Extrema-direita', 'Não classificado'
+GRUPOS = (ESQ, CEN, DIR, EXD, NC)
 ORDEM = [('PSOL', ESQ, 'PSOL'), ('PCDOB', ESQ, 'PCdoB'), ('PT', ESQ, 'PT'), ('PSB', ESQ, 'PSB'),
          ('PDT', ESQ, 'PDT'), ('PV', ESQ, 'PV'),
          ('CIDADANIA', CEN, 'PPS'), ('PSDB', CEN, 'PSDB'), ('MDB', CEN, 'PMDB'),
-         ('PRD', DIR, 'PTB'), ('PL', DIR, 'PR'), ('PP', DIR, 'PP'), ('UNIÃO', DIR, 'DEM'),
+         ('PRD', DIR, 'PTB'), ('PP', DIR, 'PP'), ('UNIÃO', DIR, 'DEM'), ('PL', EXD, 'PR (ver nota)'),
          ('REDE', NC, 'sem correspondente'), ('PODE', NC, 'sem correspondente'), ('AVANTE', NC, 'sem correspondente'),
          ('PSD', NC, 'sem correspondente'), ('SOLIDARIEDADE', NC, 'sem correspondente'),
          ('REPUBLICANOS', NC, 'sem correspondente'), ('NOVO', NC, 'sem correspondente'),
@@ -55,7 +56,7 @@ assert set(cA) | set(cB) <= {p for p, _, _ in ORDEM}, (set(cA) | set(cB)) - {p f
 
 def gerar_cores():
     cores = {}
-    cfg = {ESQ: (0.985, 1.035, 0.30, 0.60), CEN: (0.78, 0.78, 0.38, 0.60), DIR: (0.60, 0.60, 0.26, 0.58)}
+    cfg = {ESQ: (0.985, 1.035, 0.30, 0.60), CEN: (0.78, 0.78, 0.38, 0.60), DIR: (0.57, 0.57, 0.42, 0.62), EXD: (0.65, 0.65, 0.20, 0.20)}
     for g, (h0, h1, l0, l1) in cfg.items():
         membros = [p for p, gg, _ in ORDEM if gg == g]
         for i, p in enumerate(membros):
@@ -205,7 +206,7 @@ class Hemiciclo(Flowable):
         self.rows = linhas
         self.Rext = largura / 2 - 0.3 * cm
         self.hemi_h = self.Rext + 0.4 * cm
-        self.grupos = [g for g in (ESQ, CEN, DIR, NC) if any(GRUPO[p] == g for p, _ in self.cont)]
+        self.grupos = [g for g in GRUPOS if any(GRUPO[p] == g for p, _ in self.cont)]
         self.ncol = len(self.grupos)
         nleg = 1 + max(sum(1 for p, _ in self.cont if GRUPO[p] == g) for g in self.grupos)
         self.leg_h = nleg * 13 + 10
@@ -256,7 +257,7 @@ class Hemiciclo(Flowable):
             x = col * col_w + 4
             y = self.leg_h - 10
             c.setFillColor(colors.black)
-            c.setFont(FONTE_B, 9)
+            c.setFont(FONTE_B, 8)
             rot = g
             c.drawString(x, y, f'{rot}: {sum(k for _, k in membros)}')
             for lin, (p, k) in enumerate(membros, 1):
@@ -322,7 +323,7 @@ abstract = (f'This report simulates the allocation of the 513 Brazilian Chamber 
             f'elected candidates in all 27 federative units, and an independent second implementation matched all 820 '
             f'combinations of unit and entity in both scenarios. In scenario B the seven-party group moves from {a7} to {b7} '
             f'seats, gaining in {n_ufs_ganho} states and losing in none, and {n_perd} seats cease to be held by other '
-            f'parties, none of them within the group. Parties are classified following Zucco Jr. (2011), which covers only parties existing up to 2009; the remaining ones are left unclassified. The report also computes, for each state, the number of votes the group '
+            f'parties, none of them within the group. Parties are classified following Zucco Jr. (2011), which covers only parties existing up to 2009; the remaining ones are left unclassified, and PL is placed at the far right by assignment of the author. The report also computes, for each state, the number of votes the group '
             f'lacked to win one additional seat. Results depend on the data generation date, on the treatment of votes '
             f'annulled sub judice and on the interpretation adopted for the second round of remaining seats.')
 S += [Paragraph('RESUMO', HUS), Paragraph(resumo, RES), Spacer(1, 12),
@@ -407,9 +408,11 @@ S += [Paragraph('2 METODOLOGIA', H1), Paragraph('2.1 Dados', H2),
                 'a direita corresponde à estimativa de 2009 (ZUCCO JR., 2011, p. 42): PSOL, PCdoB, PT, PDT, PV, PPS, PSDB, PMDB, '
                 'PTB, PR, PP e DEM, com PSB estatisticamente indistinguível de PT e PMDB indistinguível de PSDB. Os grupos '
                 'seguem o texto do autor: PMDB, PPS e PSDB formam o centro (p. 57 e 58); os partidos à esquerda do centro '
-                'compõem a esquerda; e PTB, PR, PP e DEM, à direita do centro, compõem a direita. O capítulo não rotula '
+                'compõem a esquerda; e PTB, PP e DEM, à direita do centro, compõem a direita. O capítulo não rotula '
                 'formalmente o grupo de cada partido em 2009, de modo que essa atribuição de grupos é interpretação do autor '
-                'deste relatório.', CORPO),
+                'deste relatório. <b>Exceção:</b> por decisão do autor, o PL é posicionado na extrema-direita, após a direita, '
+                'embora Zucco Jr. (2011, p. 42) situe seu antecessor, o PR, entre PTB e PP. Esse grupo, portanto, não '
+                'decorre da classificação do capítulo, que não contém a categoria.', CORPO),
       Paragraph('O capítulo cobre apenas os partidos existentes até 2009. A correspondência com os partidos de 2026 foi '
                 'feita por linhagem, conforme o Quadro 1: Cidadania sucede o PPS; MDB, o PMDB; PL, o PR; União, o DEM '
                 '(fundido ao PSL em 2022); e PRD, o PTB (fundido ao Patriota em 2023). A correspondência é uma premissa, e '
@@ -423,7 +426,8 @@ for p, g, c in ORDEM:
 S += [legenda('Q', 'Correspondência entre os partidos de 2026 e a classificação de Zucco Jr. (2011), em ordem da esquerda para a direita'),
       quadro(ordq, [4 * cm, 6 * cm, 4.5 * cm]),
       fonte('Elaborado pelo autor com base em Zucco Jr. (2011, p. 42, 57 e 58). Nota: correspondência por linhagem partidária, '
-            'premissa do autor.'), PageBreak()]
+            'premissa do autor. O grupo Extrema-direita para o PL é atribuição do autor e não consta em Zucco Jr. (2011), '
+            'que situa o PR entre PTB e PP.'), PageBreak()]
 
 # --- 3 resultados
 S += [Paragraph('3 RESULTADOS', H1), Paragraph('3.1 Cadeiras por entidade', H2),
@@ -461,7 +465,7 @@ def soma_grupo(c, g):
 
 
 lin = [['Grupo (Zucco Jr., 2011)', 'Cenário A', '% A', 'Cenário B', '% B', 'Variação']]
-for g in (ESQ, CEN, DIR, NC):
+for g in GRUPOS:
     a_, b_ = soma_grupo(cA, g), soma_grupo(cB, g)
     lin.append([g, a_, f'{100 * a_ / 513:.1f}'.replace('.', ','), b_, f'{100 * b_ / 513:.1f}'.replace('.', ','), sgn(b_ - a_)])
 lin.append(['Total', 513, '100,0', 513, '100,0', '0'])
@@ -469,11 +473,12 @@ S += [legenda('T', 'Cadeiras por grupo ideológico, cenários A e B, Brasil, 202
       tabela(lin, [5 * cm, 2.2 * cm, 1.8 * cm, 2.2 * cm, 1.8 * cm, 2 * cm], total_ultima=True),
       fonte('Elaborada pelo autor com base em TSE (2026) e Zucco Jr. (2011). Nota: a Rede, sem correspondente em Zucco '
             'Jr. (2011), integra o grupo "Não classificado" também no cenário B.')]
-gA = {g: soma_grupo(cA, g) for g in (ESQ, CEN, DIR, NC)}
-gB = {g: soma_grupo(cB, g) for g in (ESQ, CEN, DIR, NC)}
+gA = {g: soma_grupo(cA, g) for g in GRUPOS}
+gB = {g: soma_grupo(cB, g) for g in GRUPOS}
 S += [Paragraph(f'Pela classificação adotada, a esquerda passa de {gA[ESQ]} para {gB[ESQ]} cadeiras ({sgn(gB[ESQ] - gA[ESQ])}), o '
-                f'centro de {gA[CEN]} para {gB[CEN]} ({sgn(gB[CEN] - gA[CEN])}) e a direita de {gA[DIR]} para {gB[DIR]} '
-                f'({sgn(gB[DIR] - gA[DIR])}). O grupo sem classificação em Zucco Jr. (2011) passa de {gA[NC]} para {gB[NC]} '
+                f'centro de {gA[CEN]} para {gB[CEN]} ({sgn(gB[CEN] - gA[CEN])}), a direita de {gA[DIR]} para {gB[DIR]} '
+                f'({sgn(gB[DIR] - gA[DIR])}) e a extrema-direita (PL, por atribuição do autor) de {gA[EXD]} para {gB[EXD]} '
+                f'({sgn(gB[EXD] - gA[EXD])}). O grupo sem classificação em Zucco Jr. (2011) passa de {gA[NC]} para {gB[NC]} '
                 f'({sgn(gB[NC] - gA[NC])}) e inclui, entre outros, PSD, Republicanos e Podemos, de modo que {100 * gA[NC] / 513:.0f}% '
                 f'da Câmara fica fora da classificação. Os percentuais por grupo, portanto, não somam uma leitura completa do '
                 f'espectro.'.replace('.0f', ''), CORPO)]
@@ -548,7 +553,8 @@ S += [Paragraph('4 CONSIDERAÇÕES FINAIS', H1),
                 'foram verificados nem tratados por critério de idade. Quarta, o cenário B mantém os votos observados; uma '
                 'federação diferente poderia alterar candidaturas, lista e votação. Quinta, os votos faltantes são uma '
                 'medida de sensibilidade com acréscimo puro de votos, e a classificação ideológica de Zucco Jr. (2011) cobre apenas os partidos existentes até 2009, de modo que a '
-                'correspondência com os partidos de 2026 é uma premissa e uma parcela expressiva da Câmara permanece sem classificação.',
+                'correspondência com os partidos de 2026 é uma premissa e uma parcela expressiva da Câmara permanece sem classificação, e a posição do PL na extrema-direita é atribuição do autor, '
+                'divergente de Zucco Jr. (2011).',
                 CORPO),
       Paragraph('Recomenda-se, em trabalhos futuros, conferir o acórdão do STF, repetir o cálculo com os dados finais '
                 'totalizados do TSE, tratar empates segundo o art. 110 do Código Eleitoral e estimar cenários em que os votos '
