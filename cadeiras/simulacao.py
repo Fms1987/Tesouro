@@ -49,7 +49,7 @@ def carregar(dir_part, dir_cand):
     return leg, cands, ent_a
 
 
-def distribuir(uf, vagas, leg, cands, mapa):
+def distribuir(uf, vagas, leg, cands, mapa, qe_fixo=None):
     """mapa: partido -> entidade. Retorna (qe, {entidade: dict}, lista de eleitos)."""
     ent = defaultdict(lambda: {'leg': 0, 'nom': 0, 'cands': []})
     for p, v in leg.items():
@@ -67,6 +67,8 @@ def distribuir(uf, vagas, leg, cands, mapa):
     validos = sum(e['votos'] for e in ent.values())
     qe = validos / vagas
     qe = math.floor(qe) + (1 if qe - math.floor(qe) > 0.5 else 0)   # art. 106
+    if qe_fixo is not None:
+        qe = qe_fixo
     min10, min20 = 0.10 * qe, 0.20 * qe
     eleitos = []
 
