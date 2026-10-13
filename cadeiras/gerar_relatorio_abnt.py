@@ -111,7 +111,7 @@ def est(nm, **kw):
 
 CORPO = est('Corpo', firstLineIndent=1.25 * cm)
 CORPO0 = est('Corpo0')
-H1 = est('H1', fontName=FONTE_B, alignment=TA_LEFT, spaceBefore=0, spaceAfter=18, keepWithNext=1)
+H1 = est('H1', fontName=FONTE_B, alignment=TA_LEFT, spaceBefore=18, spaceAfter=18, keepWithNext=1)
 H2 = est('H2', fontName=FONTE_B, alignment=TA_LEFT, spaceBefore=18, spaceAfter=18, keepWithNext=1)
 HU = est('HU', fontName=FONTE_B, alignment=TA_CENTER, spaceAfter=18)          # títulos sem indicativo numérico
 HUS = est('HUS', fontName=FONTE_B, alignment=TA_CENTER, spaceAfter=18)        # sumário, listas (fora do sumário)
@@ -301,59 +301,8 @@ assert n_perd == 19
 
 TITULO = 'DISTRIBUIÇÃO DE CADEIRAS DE DEPUTADO FEDERAL EM 2026: FEDERAÇÕES VIGENTES E CENÁRIO DE FEDERAÇÃO ÚNICA DE SETE PARTIDOS'
 
-# --- capa
-S += [Paragraph('[INSTITUIÇÃO]', CENTB), Spacer(1, 3 * cm), Paragraph('[NOME DO AUTOR]', CENTB), Spacer(1, 5.5 * cm),
-      Paragraph(f'<b>{TITULO}</b>', CENT), Spacer(1, 7 * cm), Paragraph('Brasil', CENT), Paragraph('2026', CENT),
-      NextPageTemplate('pre'), PageBreak()]
-# --- folha de rosto
-S += [Paragraph('[NOME DO AUTOR]', CENTB), Spacer(1, 5.5 * cm), Paragraph(f'<b>{TITULO}</b>', CENT), Spacer(1, 3.5 * cm),
-      Paragraph('Relatório técnico de simulação de distribuição de cadeiras da Câmara dos Deputados a partir de dados '
-                'oficiais do Tribunal Superior Eleitoral, comparando as federações partidárias vigentes a um cenário '
-                'hipotético de federação única de sete partidos.', NAT),
-      Spacer(1, 6 * cm), Paragraph('Brasil', CENT), Paragraph('2026', CENT), PageBreak()]
-
-# --- resumo (NBR 6028: parágrafo único, espaçamento simples, 150 a 500 palavras)
-resumo = (f'Este relatório simula a distribuição das 513 cadeiras de deputado federal eleitas em outubro de 2026 sob dois '
-          f'cenários. No cenário A, aplicam-se as federações partidárias vigentes. No cenário B, os votos de PT, PSB, PSOL, '
-          f'PDT, PV, PCdoB e Rede são contabilizados como os de uma única federação em cada unidade da federação. '
-          f'Utilizam-se os dados abertos do Tribunal Superior Eleitoral gerados em 11 de outubro de 2026, com 113.678.019 votos '
-          f'válidos, e as regras de quociente eleitoral, quociente partidário, barreiras individuais de 10% e 20% do '
-          f'quociente eleitoral e sobras por maiores médias em duas rodadas. O cenário A reproduz exatamente os candidatos '
-          f'eleitos oficialmente em todas as 27 unidades da federação, e uma segunda implementação independente reproduziu '
-          f'as 820 combinações de unidade da federação e entidade nos dois cenários. No cenário B, o conjunto de sete '
-          f'partidos passa de {a7} para {b7} cadeiras, com ganhos em {n_ufs_ganho} unidades da federação e nenhuma perda, e '
-          f'{n_perd} cadeiras deixam de ser ocupadas por outras legendas, nenhuma delas pertencente ao conjunto. Os partidos são posicionados no espectro ideológico segundo a pesquisa com especialistas de Bolognesi et al. '
-          f'(2025), com dados de 2022. Calcula-se '
-          f'também, por unidade da federação, o número de votos que faltaram ao conjunto para obter uma cadeira adicional. '
-          f'Os resultados dependem da data de geração dos dados, do tratamento dos votos anulados sub judice e da '
-          f'interpretação adotada para a segunda rodada de sobras.')
-abstract = (f'This report simulates the allocation of the 513 Brazilian Chamber of Deputies seats elected in October 2026 under '
-            f'two scenarios. Scenario A applies the party federations currently in force. Scenario B counts the votes of PT, '
-            f'PSB, PSOL, PDT, PV, PCdoB and Rede as those of a single federation in each state. The analysis uses open data '
-            f'from the Superior Electoral Court generated on 11 October 2026, comprising 113,678,019 valid votes, and applies '
-            f'the electoral quotient, party quotient, individual thresholds of 10% and 20% of the electoral quotient and '
-            f'largest-average distribution of remaining seats in two rounds. Scenario A reproduces exactly the officially '
-            f'elected candidates in all 27 federative units, and an independent second implementation matched all 820 '
-            f'combinations of unit and entity in both scenarios. In scenario B the seven-party group moves from {a7} to {b7} '
-            f'seats, gaining in {n_ufs_ganho} states and losing in none, and {n_perd} seats cease to be held by other '
-            f'parties, none of them within the group. Parties are placed on the ideological spectrum following the expert survey of Bolognesi et al. (2025), with 2022 data. The report also computes, for each state, the number of votes the group '
-            f'lacked to win one additional seat. Results depend on the data generation date, on the treatment of votes '
-            f'annulled sub judice and on the interpretation adopted for the second round of remaining seats.')
-S += [Paragraph('RESUMO', HUS), Paragraph(resumo, RES), Spacer(1, 12),
-      Paragraph('<b>Palavras-chave</b>: Câmara dos Deputados. Federação partidária. Sistema proporcional. Eleições 2026. '
-                'Distribuição de cadeiras.', RES), PageBreak(),
-      Paragraph('ABSTRACT', HUS), Paragraph(abstract, RES), Spacer(1, 12),
-      Paragraph('<b>Keywords</b>: Chamber of Deputies. Party federation. Proportional representation. 2026 elections. '
-                'Seat allocation.', RES), PageBreak()]
-
-# --- listas e sumário
-lf = TOCk('LF', levelStyles=[LST], dotsMinLevel=0)
-lt = TOCk('LT', levelStyles=[LST], dotsMinLevel=0)
-lq = TOCk('LQ', levelStyles=[LST], dotsMinLevel=0)
-toc = TableOfContents(levelStyles=[TOC1, TOC2], dotsMinLevel=0)
-S += [Paragraph('LISTA DE FIGURAS', HUS), lf, PageBreak(), Paragraph('LISTA DE QUADROS', HUS), lq, PageBreak(),
-      Paragraph('LISTA DE TABELAS', HUS), lt, PageBreak(), Paragraph('SUMÁRIO', HUS), toc,
-      NextPageTemplate('main'), PageBreak()]
+# --- título (sem capa, resumo, listas ou sumário)
+S += [Paragraph(f'<b>{TITULO}</b>', CENT), Spacer(1, 18)]
 
 # --- 1 introdução
 S += [Paragraph('1 INTRODUÇÃO', H1)]
@@ -374,7 +323,7 @@ S += [Paragraph('A eleição para a Câmara dos Deputados adota o sistema propor
                 'incluindo a própria definição das listas. Os resultados, portanto, medem o efeito aritmético da regra sobre '
                 'votos observados.', CORPO),
       Paragraph('O texto organiza-se em quatro seções. A seção 2 descreve dados, regras e verificação. A seção 3 apresenta os '
-                'resultados. A seção 4 reúne as considerações finais e as limitações.', CORPO), PageBreak()]
+                'resultados. A seção 4 reúne as considerações finais e as limitações.', CORPO)]
 
 # --- 2 metodologia
 S += [Paragraph('2 METODOLOGIA', H1), Paragraph('2.1 Dados', H2),
@@ -437,7 +386,7 @@ for p, g, sg, m in ORDEM:
 S += [legenda('Q', 'Posição ideológica dos partidos em 2022, em ordem da esquerda para a direita'),
       quadro(ordq, [3.5 * cm, 4.5 * cm, 3.5 * cm, 4 * cm]),
       fonte('Elaborado pelo autor com base em Bolognesi et al. (2025, Tabela 1). Nota: PRD com valor derivado pela média '
-            'de PTB e Patriota; escala de 0 (esquerda) a 10 (direita).'), PageBreak()]
+            'de PTB e Patriota; escala de 0 (esquerda) a 10 (direita).')]
 
 # --- 3 resultados
 S += [Paragraph('3 RESULTADOS', H1), Paragraph('3.1 Cadeiras por entidade', H2),
@@ -552,7 +501,7 @@ tf = tabela(lin, [1.1 * cm, 1.8 * cm, 2.2 * cm, 2.0 * cm, 2.0 * cm, 4.6 * cm, 2.
 # colunas de texto à esquerda
 S += [legenda('T', 'Votos que faltaram ao conjunto de sete partidos para uma cadeira adicional, por unidade da federação, 2026'),
       tf, fonte('Elaborada pelo autor com base em TSE (2026). Nota: quociente eleitoral e votos das demais entidades '
-                'mantidos fixos; ordenação do menor para o maior déficit absoluto.'), PageBreak()]
+                'mantidos fixos; ordenação do menor para o maior déficit absoluto.')]
 
 # --- 4 considerações finais
 S += [Paragraph('4 CONSIDERAÇÕES FINAIS', H1),
@@ -572,7 +521,7 @@ S += [Paragraph('4 CONSIDERAÇÕES FINAIS', H1),
                 CORPO),
       Paragraph('Recomenda-se, em trabalhos futuros, conferir o acórdão do STF, repetir o cálculo com os dados finais '
                 'totalizados do TSE, tratar empates segundo o art. 110 do Código Eleitoral e estimar cenários em que os votos '
-                'extras sejam transferidos de outras entidades, e não apenas acrescentados.', CORPO), PageBreak()]
+                'extras sejam transferidos de outras entidades, e não apenas acrescentados.', CORPO)]
 
 # --- referências (NBR 6023)
 refs = [
@@ -607,9 +556,7 @@ def num_pagina(c, doc):
 
 
 doc = Doc(SAIDA, pagesize=A4, leftMargin=3 * cm, rightMargin=2 * cm, topMargin=3 * cm, bottomMargin=2 * cm,
-          title='Distribuição de cadeiras de deputado federal em 2026', author='[NOME DO AUTOR]')
+          title='Distribuição de cadeiras de deputado federal em 2026')
 frame = Frame(3 * cm, 2 * cm, LARG, A4[1] - 5 * cm, id='f', leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
-doc.addPageTemplates([PageTemplate(id='capa', frames=[frame]),
-                      PageTemplate(id='pre', frames=[frame]),
-                      PageTemplate(id='main', frames=[frame], onPage=num_pagina)])
+doc.addPageTemplates([PageTemplate(id='main', frames=[frame], onPage=num_pagina)])
 doc.multiBuild(S)
