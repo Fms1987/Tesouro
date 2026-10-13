@@ -31,41 +31,57 @@ fal = pd.read_csv(R + 'votos_faltantes_mais_uma_cadeira.csv')
 perdas = pd.read_csv(R + 'perdas_cenario_B.csv')
 
 SETE = ['PT/PC do B/PV', 'PSOL/REDE', 'PSB', 'PDT']
-# Classificação de Zucco Jr. (2011): ordem esquerda-direita estimada para 2009 (Tabela 2, p. 42) e grupos (conclusão, p. 57-58).
-# Correspondência com os partidos de 2026 por linhagem partidária (premissa do autor deste relatório).
-ESQ, CEN, DIR, EXD, NC = 'Esquerda', 'Centro', 'Direita', 'Extrema-direita', 'Não classificado'
-GRUPOS = (ESQ, CEN, DIR, EXD, NC)
-ORDEM = [('PSOL', ESQ, 'PSOL'), ('PCDOB', ESQ, 'PCdoB'), ('PT', ESQ, 'PT'), ('PSB', ESQ, 'PSB'),
-         ('PDT', ESQ, 'PDT'), ('PV', ESQ, 'PV'),
-         ('CIDADANIA', CEN, 'PPS'), ('PSDB', CEN, 'PSDB'), ('MDB', CEN, 'PMDB'),
-         ('PRD', DIR, 'PTB'), ('PP', DIR, 'PP'), ('UNIÃO', DIR, 'DEM'), ('PL', EXD, 'PR (ver nota)'),
-         ('REDE', NC, 'sem correspondente'), ('PODE', NC, 'sem correspondente'), ('AVANTE', NC, 'sem correspondente'),
-         ('PSD', NC, 'sem correspondente'), ('SOLIDARIEDADE', NC, 'sem correspondente'),
-         ('REPUBLICANOS', NC, 'sem correspondente'), ('NOVO', NC, 'sem correspondente'),
-         ('MISSÃO', NC, 'sem correspondente')]
-GRUPO = {p: g for p, g, _ in ORDEM}
+# Classificação de Bolognesi, Ribeiro, Codato e Silva (2025), Opinião Pública 31, e31120, Tabela 1: média ponderada de 2022
+# (escala 0 a 10) e categoria. Ordem esquerda-direita pela média ponderada. Limiares: 0 a 1,5 extrema-esquerda; 1,51 a 3
+# esquerda; 3,01 a 4,49 centro-esquerda; 4,5 a 5,5 centro; 5,51 a 7 centro-direita; 7,01 a 8,5 direita; 8,51 a 10 extrema-direita.
+EXE, ESQ, CEE, CEN, CED, DIR, EXD, NC = ('Extrema-esquerda', 'Esquerda', 'Centro-esquerda', 'Centro', 'Centro-direita',
+                                         'Direita', 'Extrema-direita', 'Não classificado')
+GRUPOS = (EXE, ESQ, CEE, CEN, CED, DIR, EXD, NC)
+LIMIARES = [(1.5, EXE), (3.0, ESQ), (4.49, CEE), (5.5, CEN), (7.0, CED), (8.5, DIR), (10.0, EXD)]
+
+
+def categoria(m):
+    return next(g for lim, g in LIMIARES if m <= lim)
+
+
+# (partido 2026, sigla no estudo, média ponderada 2022). PRD: média de PTB (7,955) e Patriota (8,862), regra de fusão dos autores.
+BRUTO = [('PSOL', 'PSOL', 1.453), ('PCDOB', 'PCdoB', 1.834), ('PT', 'PT', 2.761), ('PSB', 'PSB', 3.699),
+         ('REDE', 'REDE', 3.802), ('PDT', 'PDT', 3.977), ('PV', 'PV', 4.245), ('SOLIDARIEDADE', 'SDD', 6.193),
+         ('CIDADANIA', 'CDD', 6.358), ('AVANTE', 'AVANTE', 6.667), ('MDB', 'MDB', 6.698), ('PSDB', 'PSDB', 6.966),
+         ('PSD', 'PSD', 7.151), ('PODE', 'PODE', 7.666), ('PP', 'PROGRE', 8.398),
+         ('PRD', 'PTB e PATRI (média)', round((7.955 + 8.862) / 2, 3)), ('REPUBLICANOS', 'REP', 8.584),
+         ('UNIÃO', 'UNIAO', 8.749), ('NOVO', 'NOVO', 8.934), ('PL', 'PL', 9.068), ('MISSÃO', 'sem correspondente', None)]
+assert [m for _, _, m in BRUTO if m] == sorted(m for _, _, m in BRUTO if m)
+ORDEM = [(p, categoria(m) if m is not None else NC, sg, m) for p, sg, m in BRUTO]
+GRUPO = {p: g for p, g, _, _ in ORDEM}
+MEDIA = {p: m for p, _, _, m in ORDEM}
 NOME = {'PCDOB': 'PCdoB', 'REDE': 'Rede', 'UNIÃO': 'União', 'MISSÃO': 'Missão', 'SOLIDARIEDADE': 'Solidariedade',
         'REPUBLICANOS': 'Republicanos', 'AVANTE': 'Avante', 'PODE': 'Podemos', 'NOVO': 'Novo', 'CIDADANIA': 'Cidadania'}
 nome = lambda p: NOME.get(p, p)
 cA = eA.groupby('partido').size().to_dict()
 cB = eB.groupby('partido').size().to_dict()
 assert sum(cA.values()) == 513 and sum(cB.values()) == 513
-assert set(cA) | set(cB) <= {p for p, _, _ in ORDEM}, (set(cA) | set(cB)) - {p for p, _, _ in ORDEM}
-# Cidadania (ex-PPS, grupo Centro) elegeu 0 deputados nos dois cenários e não aparece nos hemiciclos.
+assert set(cA) | set(cB) <= {p for p, _, _, _ in ORDEM}, (set(cA) | set(cB)) - {p for p, _, _, _ in ORDEM}
+# Conferência das categorias com a coluna "Ideologia categórica" da Tabela 1 do artigo.
+_ESPERADO = {'PSOL': EXE, 'PCDOB': ESQ, 'PT': ESQ, 'PSB': CEE, 'REDE': CEE, 'PDT': CEE, 'PV': CEE, 'SOLIDARIEDADE': CED,
+             'CIDADANIA': CED, 'AVANTE': CED, 'MDB': CED, 'PSDB': CED, 'PSD': DIR, 'PODE': DIR, 'PP': DIR,
+             'REPUBLICANOS': EXD, 'UNIÃO': EXD, 'NOVO': EXD, 'PL': EXD}
+assert all(GRUPO[p] == g for p, g in _ESPERADO.items()), [(p, GRUPO[p], g) for p, g in _ESPERADO.items() if GRUPO[p] != g]
 
 
 def gerar_cores():
     cores = {}
-    cfg = {ESQ: (0.985, 1.035, 0.30, 0.60), CEN: (0.78, 0.78, 0.38, 0.60), DIR: (0.57, 0.57, 0.42, 0.62), EXD: (0.65, 0.65, 0.20, 0.20)}
+    cfg = {EXE: (0.0, 0.0, 0.26, 0.26), ESQ: (0.0, 0.0, 0.42, 0.55), CEE: (0.07, 0.07, 0.48, 0.64),
+           CEN: (0.15, 0.15, 0.50, 0.50), CED: (0.53, 0.53, 0.42, 0.68), DIR: (0.60, 0.60, 0.40, 0.56),
+           EXD: (0.66, 0.66, 0.20, 0.36)}
     for g, (h0, h1, l0, l1) in cfg.items():
-        membros = [p for p, gg, _ in ORDEM if gg == g]
+        membros = [p for p, gg, _, _ in ORDEM if gg == g]
         for i, p in enumerate(membros):
             t = i / max(1, len(membros) - 1)
-            r, gg_, b = colorsys.hls_to_rgb((h0 + (h1 - h0) * t) % 1.0, l0 + (l1 - l0) * t, 0.75)
+            r, gg_, b = colorsys.hls_to_rgb(h0 + (h1 - h0) * t, l0 + (l1 - l0) * t, 0.78)
             cores[p] = colors.Color(r, gg_, b)
-    for i, p in enumerate([p for p, g, _ in ORDEM if g == NC]):
-        v = 0.55 if i % 2 == 0 else 0.75
-        cores[p] = colors.Color(v, v, v)
+    for p in [p for p, g, _, _ in ORDEM if g == NC]:
+        cores[p] = colors.Color(0.6, 0.6, 0.6)
     return cores
 
 
@@ -201,15 +217,13 @@ class Hemiciclo(Flowable):
 
     def __init__(self, contagem, largura=LARG, linhas=11):
         super().__init__()
-        self.cont = [(p, contagem.get(p, 0)) for p, _, _ in ORDEM if contagem.get(p, 0) > 0]
+        self.cont = [(p, contagem.get(p, 0)) for p, _, _, _ in ORDEM if contagem.get(p, 0) > 0]
         self.w = largura
         self.rows = linhas
         self.Rext = largura / 2 - 0.3 * cm
         self.hemi_h = self.Rext + 0.4 * cm
         self.grupos = [g for g in GRUPOS if any(GRUPO[p] == g for p, _ in self.cont)]
-        self.ncol = len(self.grupos)
-        nleg = 1 + max(sum(1 for p, _ in self.cont if GRUPO[p] == g) for g in self.grupos)
-        self.leg_h = nleg * 13 + 10
+        self.leg_h = len(self.grupos) * 13 + 10
         self.height = self.hemi_h + self.leg_h
         self.width = largura
 
@@ -250,23 +264,22 @@ class Hemiciclo(Flowable):
         c.drawCentredString(cx, cy + 14, str(N))
         c.setFont(FONTE, 9)
         c.drawCentredString(cx, cy + 3, 'deputados federais')
-        # legenda: uma coluna por grupo (classificação de Zucco Jr.), na ordem esquerda-direita
-        col_w = self.w / self.ncol
-        for col, g in enumerate(self.grupos):
+        # legenda: uma linha por categoria (Bolognesi et al., 2025), na ordem esquerda-direita
+        for lin, g in enumerate(self.grupos):
             membros = [(p, k) for p, k in self.cont if GRUPO[p] == g]
-            x = col * col_w + 4
-            y = self.leg_h - 10
+            y = self.leg_h - 10 - lin * 13
             c.setFillColor(colors.black)
-            c.setFont(FONTE_B, 8)
-            rot = g
-            c.drawString(x, y, f'{rot}: {sum(k for _, k in membros)}')
-            for lin, (p, k) in enumerate(membros, 1):
-                yy = y - lin * 13
+            c.setFont(FONTE_B, 8.5)
+            c.drawString(0, y, f'{g}: {sum(k for _, k in membros)}')
+            x = 3.7 * cm
+            for p, k in membros:
                 c.setFillColor(CORES[p])
-                c.circle(x + 4, yy + 3, 4, stroke=0, fill=1)
+                c.circle(x + 4, y + 3, 4, stroke=0, fill=1)
                 c.setFillColor(colors.black)
-                c.setFont(FONTE, 9)
-                c.drawString(x + 14, yy, f'{nome(p)}: {k}')
+                c.setFont(FONTE, 8.5)
+                t = f'{nome(p)} {k}'
+                c.drawString(x + 12, y, t)
+                x += 12 + stringWidth(t, FONTE, 8.5) + 10
 
 
 # ---------------------------------------------------------------- conteúdo
@@ -309,8 +322,8 @@ resumo = (f'Este relatório simula a distribuição das 513 cadeiras de deputado
           f'eleitos oficialmente em todas as 27 unidades da federação, e uma segunda implementação independente reproduziu '
           f'as 820 combinações de unidade da federação e entidade nos dois cenários. No cenário B, o conjunto de sete '
           f'partidos passa de {a7} para {b7} cadeiras, com ganhos em {n_ufs_ganho} unidades da federação e nenhuma perda, e '
-          f'{n_perd} cadeiras deixam de ser ocupadas por outras legendas, nenhuma delas pertencente ao conjunto. Os partidos são classificados segundo Zucco Jr. (2011), que cobre apenas as legendas existentes até 2009; as '
-          f'demais ficam sem classificação. Calcula-se '
+          f'{n_perd} cadeiras deixam de ser ocupadas por outras legendas, nenhuma delas pertencente ao conjunto. Os partidos são posicionados no espectro ideológico segundo a pesquisa com especialistas de Bolognesi et al. '
+          f'(2025), com dados de 2022. Calcula-se '
           f'também, por unidade da federação, o número de votos que faltaram ao conjunto para obter uma cadeira adicional. '
           f'Os resultados dependem da data de geração dos dados, do tratamento dos votos anulados sub judice e da '
           f'interpretação adotada para a segunda rodada de sobras.')
@@ -323,7 +336,7 @@ abstract = (f'This report simulates the allocation of the 513 Brazilian Chamber 
             f'elected candidates in all 27 federative units, and an independent second implementation matched all 820 '
             f'combinations of unit and entity in both scenarios. In scenario B the seven-party group moves from {a7} to {b7} '
             f'seats, gaining in {n_ufs_ganho} states and losing in none, and {n_perd} seats cease to be held by other '
-            f'parties, none of them within the group. Parties are classified following Zucco Jr. (2011), which covers only parties existing up to 2009; the remaining ones are left unclassified, and PL is placed at the far right by assignment of the author. The report also computes, for each state, the number of votes the group '
+            f'parties, none of them within the group. Parties are placed on the ideological spectrum following the expert survey of Bolognesi et al. (2025), with 2022 data. The report also computes, for each state, the number of votes the group '
             f'lacked to win one additional seat. Results depend on the data generation date, on the treatment of votes '
             f'annulled sub judice and on the interpretation adopted for the second round of remaining seats.')
 S += [Paragraph('RESUMO', HUS), Paragraph(resumo, RES), Spacer(1, 12),
@@ -355,7 +368,7 @@ S += [Paragraph('A eleição para a Câmara dos Deputados adota o sistema propor
                 'cadeiras o conjunto de partidos ocuparia em cada cenário, quais legendas cederiam cadeiras e quantos votos '
                 'faltaram ao conjunto para obter uma cadeira adicional.', CORPO),
       Paragraph('As cadeiras de cada cenário são ainda representadas em hemiciclos, com os partidos classificados no espectro '
-                'ideológico segundo Zucco Jr. (2011).', CORPO),
+                'ideológico segundo a pesquisa com especialistas de Bolognesi et al. (2025).', CORPO),
       Paragraph('A análise é um exercício de simulação sobre resultados de uma eleição já realizada. Ela não considera alteração '
                 'de comportamento de eleitores, de candidatos ou de partidos que decorreria de uma federação diferente, '
                 'incluindo a própria definição das listas. Os resultados, portanto, medem o efeito aritmético da regra sobre '
@@ -402,32 +415,29 @@ S += [Paragraph('2 METODOLOGIA', H1), Paragraph('2.1 Dados', H2),
                 'outra entidade; se fossem transferidos da entidade que perderia a cadeira, o número necessário seria '
                 'menor.', CORPO),
       Paragraph('2.6 Classificação ideológica e hemiciclo', H2),
-      Paragraph('Para as figuras 1 e 2 e para a Tabela 3, os partidos foram classificados segundo Zucco Jr. (2011), que estima '
-                'a posição ideológica dos partidos brasileiros de 1990 a 2009 a partir das autoclassificações e '
-                'classificações recíprocas dos parlamentares na Pesquisa Legislativa Brasileira. A ordenação da esquerda para '
-                'a direita corresponde à estimativa de 2009 (ZUCCO JR., 2011, p. 42): PSOL, PCdoB, PT, PDT, PV, PPS, PSDB, PMDB, '
-                'PTB, PR, PP e DEM, com PSB estatisticamente indistinguível de PT e PMDB indistinguível de PSDB. Os grupos '
-                'seguem o texto do autor: PMDB, PPS e PSDB formam o centro (p. 57 e 58); os partidos à esquerda do centro '
-                'compõem a esquerda; e PTB, PP e DEM, à direita do centro, compõem a direita. O capítulo não rotula '
-                'formalmente o grupo de cada partido em 2009, de modo que essa atribuição de grupos é interpretação do autor '
-                'deste relatório. <b>Exceção:</b> por decisão do autor, o PL é posicionado na extrema-direita, após a direita, '
-                'embora Zucco Jr. (2011, p. 42) situe seu antecessor, o PR, entre PTB e PP. Esse grupo, portanto, não '
-                'decorre da classificação do capítulo, que não contém a categoria.', CORPO),
-      Paragraph('O capítulo cobre apenas os partidos existentes até 2009. A correspondência com os partidos de 2026 foi '
-                'feita por linhagem, conforme o Quadro 1: Cidadania sucede o PPS; MDB, o PMDB; PL, o PR; União, o DEM '
-                '(fundido ao PSL em 2022); e PRD, o PTB (fundido ao Patriota em 2023). A correspondência é uma premissa, e '
-                'a posição de 2009 não é necessariamente a de 2026, pois o próprio capítulo documenta deslocamentos, como '
-                'os de PPS e PSDB. Rede, Podemos, Avante, PSD, Solidariedade, Republicanos, Novo e Missão não têm '
-                'correspondente no capítulo e aparecem em cinza, ao final do hemiciclo, sem atribuição de posição.', CORPO)]
+      Paragraph('Para as figuras 1 e 2 e para a Tabela 3, os partidos foram posicionados segundo Bolognesi et al. (2025), '
+                'que apresentam a classificação mais recente da literatura brasileira para todos os partidos. Os autores '
+                'enviaram questionário online a 978 cientistas políticos cadastrados na Associação Brasileira de Ciência '
+                'Política, com taxa de retorno de 48,8% em 2022, e pediram o posicionamento de cada partido em escala de onze '
+                'pontos, de 0 (esquerda) a 10 (direita), em 2018 e em 2022. Utilizou-se a média ponderada de 2022 da Tabela 1 '
+                'do artigo, na qual a média de 2022 é ajustada pela de 2018. A categoria de cada partido segue os limiares '
+                'dos autores: de 0 a 1,5, extrema-esquerda; de 1,51 a 3, esquerda; de 3,01 a 4,49, centro-esquerda; de 4,5 a '
+                '5,5, centro; de 5,51 a 7, centro-direita; de 7,01 a 8,5, direita; e de 8,51 a 10, extrema-direita. Os '
+                'autores advertem que o termo "extrema" designa apenas a posição na escala e não qualifica o caráter '
+                'antissistema do partido (BOLOGNESI et al., 2025).', CORPO),
+      Paragraph('Duas legendas exigiram tratamento. O PRD, criado em 2023 pela fusão de PTB e Patriota, não consta do '
+                'estudo; atribuiu-se a ele a média ponderada de PTB (7,955) e Patriota (8,862), regra que os próprios autores '
+                'aplicam a partidos fundidos, de modo que o valor resultante, 8,409, é derivado e não publicado. O Missão '
+                'não tem correspondente e permanece não classificado. A sigla "PROGRE" do estudo foi lida como Progressistas '
+                '(PP). A classificação refere-se a 2022, e a posição dos partidos em 2026 pode ser diferente.', CORPO)]
 
-ordq = [['Partido em 2026', 'Correspondente em Zucco Jr. (2011)', 'Grupo']]
-for p, g, c in ORDEM:
-    ordq.append([nome(p), c, g])
-S += [legenda('Q', 'Correspondência entre os partidos de 2026 e a classificação de Zucco Jr. (2011), em ordem da esquerda para a direita'),
-      quadro(ordq, [4 * cm, 6 * cm, 4.5 * cm]),
-      fonte('Elaborado pelo autor com base em Zucco Jr. (2011, p. 42, 57 e 58). Nota: correspondência por linhagem partidária, '
-            'premissa do autor. O grupo Extrema-direita para o PL é atribuição do autor e não consta em Zucco Jr. (2011), '
-            'que situa o PR entre PTB e PP.'), PageBreak()]
+ordq = [['Partido em 2026', 'Sigla no estudo', 'Média ponderada, 2022', 'Categoria']]
+for p, g, sg, m in ORDEM:
+    ordq.append([nome(p), sg, f'{m:.3f}'.replace('.', ',') if m is not None else 'sem dado', g])
+S += [legenda('Q', 'Posição ideológica dos partidos em 2022, em ordem da esquerda para a direita'),
+      quadro(ordq, [3.5 * cm, 4.5 * cm, 3.5 * cm, 4 * cm]),
+      fonte('Elaborado pelo autor com base em Bolognesi et al. (2025, Tabela 1). Nota: PRD com valor derivado pela média '
+            'de PTB e Patriota; escala de 0 (esquerda) a 10 (direita).'), PageBreak()]
 
 # --- 3 resultados
 S += [Paragraph('3 RESULTADOS', H1), Paragraph('3.1 Cadeiras por entidade', H2),
@@ -451,43 +461,46 @@ S += [legenda('T', 'Cadeiras por entidade, cenários A e B, Brasil, 2026'),
 S += [Paragraph('3.2 Cadeiras por partido', H2),
       Paragraph('A Tabela 2 desagrega as cadeiras por partido. Dentro de uma federação, as cadeiras são ocupadas pelos '
                 'candidatos mais votados da lista conjunta, de modo que a distribuição entre os partidos do conjunto é '
-                'consequência da votação individual e não de cota partidária. A Tabela 3 agrega as cadeiras por grupo ideológico e as figuras 1 e 2 apresentam os '
+                'consequência da votação individual e não de cota partidária. A Tabela 3 agrega as cadeiras por categoria ideológica e as figuras 1 e 2 apresentam os '
                 'hemiciclos dos dois cenários.', CORPO)]
-lin = [['Partido', 'Grupo (Zucco Jr., 2011)', 'Cenário A', 'Cenário B', 'Variação']]
-for p, g, _ in ORDEM:
-    lin.append([nome(p), g, cA.get(p, 0), cB.get(p, 0), sgn(cB.get(p, 0) - cA.get(p, 0))])
-lin.append(['Total', '', 513, 513, '0'])
+lin = [['Partido', 'Categoria (Bolognesi et al., 2025)', 'Média ponderada', 'Cenário A', 'Cenário B', 'Variação']]
+for p, g, _, m in ORDEM:
+    lin.append([nome(p), g, f'{m:.3f}'.replace('.', ',') if m is not None else 'sem dado', cA.get(p, 0), cB.get(p, 0), sgn(cB.get(p, 0) - cA.get(p, 0))])
+lin.append(['Total', '', '', 513, 513, '0'])
 S += [legenda('T', 'Cadeiras por partido, cenários A e B, Brasil, 2026'),
-      tabela(lin, [3.5 * cm, 4.5 * cm, 2.5 * cm, 2.5 * cm, 2.5 * cm], esq=(0, 1), total_ultima=True),
-      fonte('Elaborada pelo autor com base em TSE (2026). Nota: partidos ordenados segundo o Quadro 1; "Não classificado" indica partido sem correspondente em Zucco Jr. (2011).')]
+      tabela(lin, [3 * cm, 4.2 * cm, 2.4 * cm, 2 * cm, 2 * cm, 2.4 * cm], esq=(0, 1), total_ultima=True),
+      fonte('Elaborada pelo autor com base em TSE (2026). Nota: partidos ordenados segundo o Quadro 1.')]
 def soma_grupo(c, g):
     return sum(v for p, v in c.items() if GRUPO[p] == g)
 
 
-lin = [['Grupo (Zucco Jr., 2011)', 'Cenário A', '% A', 'Cenário B', '% B', 'Variação']]
+lin = [['Categoria (Bolognesi et al., 2025)', 'Cenário A', '% A', 'Cenário B', '% B', 'Variação']]
 for g in GRUPOS:
     a_, b_ = soma_grupo(cA, g), soma_grupo(cB, g)
     lin.append([g, a_, f'{100 * a_ / 513:.1f}'.replace('.', ','), b_, f'{100 * b_ / 513:.1f}'.replace('.', ','), sgn(b_ - a_)])
 lin.append(['Total', 513, '100,0', 513, '100,0', '0'])
-S += [legenda('T', 'Cadeiras por grupo ideológico, cenários A e B, Brasil, 2026'),
+S += [legenda('T', 'Cadeiras por categoria ideológica, cenários A e B, Brasil, 2026'),
       tabela(lin, [5 * cm, 2.2 * cm, 1.8 * cm, 2.2 * cm, 1.8 * cm, 2 * cm], total_ultima=True),
-      fonte('Elaborada pelo autor com base em TSE (2026) e Zucco Jr. (2011). Nota: a Rede, sem correspondente em Zucco '
-            'Jr. (2011), integra o grupo "Não classificado" também no cenário B.')]
+      fonte('Elaborada pelo autor com base em TSE (2026) e Bolognesi et al. (2025). Nota: nenhum partido com cadeiras '
+            'ocupa a categoria Centro; Missão, sem dado, é a única legenda não classificada.')]
+esq3 = (EXE, ESQ, CEE)
 gA = {g: soma_grupo(cA, g) for g in GRUPOS}
 gB = {g: soma_grupo(cB, g) for g in GRUPOS}
-S += [Paragraph(f'Pela classificação adotada, a esquerda passa de {gA[ESQ]} para {gB[ESQ]} cadeiras ({sgn(gB[ESQ] - gA[ESQ])}), o '
-                f'centro de {gA[CEN]} para {gB[CEN]} ({sgn(gB[CEN] - gA[CEN])}), a direita de {gA[DIR]} para {gB[DIR]} '
-                f'({sgn(gB[DIR] - gA[DIR])}) e a extrema-direita (PL, por atribuição do autor) de {gA[EXD]} para {gB[EXD]} '
-                f'({sgn(gB[EXD] - gA[EXD])}). O grupo sem classificação em Zucco Jr. (2011) passa de {gA[NC]} para {gB[NC]} '
-                f'({sgn(gB[NC] - gA[NC])}) e inclui, entre outros, PSD, Republicanos e Podemos, de modo que {100 * gA[NC] / 513:.0f}% '
-                f'da Câmara fica fora da classificação. Os percentuais por grupo, portanto, não somam uma leitura completa do '
-                f'espectro.'.replace('.0f', ''), CORPO)]
+eA3, eB3 = sum(gA[g] for g in esq3), sum(gB[g] for g in esq3)
+assert (eA3, eB3) == (a7, b7)
+S += [Paragraph((f'Os sete partidos do conjunto ocupam as três categorias à esquerda do centro (Tabela 3), e nenhum partido com '
+                f'cadeiras situa-se na categoria Centro, o que acompanha o achado de desaparecimento do centro ideológico de '
+                f'Bolognesi et al. (2025). As três categorias à esquerda somam {eA3} cadeiras ({f'{100 * eA3 / 513:.1f}'.replace('.', ',')}%) no cenário A e '
+                f'{eB3} ({f'{100 * eB3 / 513:.1f}'.replace('.', ',')}%) no cenário B. A centro-direita passa de {gA[CED]} para {gB[CED]} '
+                f'({sgn(gB[CED] - gA[CED])}), a direita de {gA[DIR]} para {gB[DIR]} ({sgn(gB[DIR] - gA[DIR])}) e a extrema-direita '
+                f'de {gA[EXD]} para {gB[EXD]} ({sgn(gB[EXD] - gA[EXD])}). O Missão, não classificado, mantém {gA[NC]} cadeira.'
+                ).replace('.', ',', 0), CORPO)]
 S += [KeepTogether([legenda('F', 'Hemiciclo da Câmara dos Deputados, cenário A (federações vigentes), 2026'),
                     Hemiciclo(cA), fonte('Elaborada pelo autor com base em TSE (2026). Nota: cada ponto representa um '
-                                         'deputado; partidos ordenados e agrupados conforme Zucco Jr. (2011) e o Quadro 1; cinza indica partido sem classificação.')]),
+                                         'deputado; partidos ordenados e agrupados conforme Bolognesi et al. (2025) e o Quadro 1; cinza indica partido sem classificação.')]),
       KeepTogether([legenda('F', 'Hemiciclo da Câmara dos Deputados, cenário B (federação única de sete partidos), 2026'),
                     Hemiciclo(cB), fonte('Elaborada pelo autor com base em TSE (2026). Nota: cada ponto representa um '
-                                         'deputado; partidos ordenados e agrupados conforme Zucco Jr. (2011) e o Quadro 1; cinza indica partido sem classificação.')])]
+                                         'deputado; partidos ordenados e agrupados conforme Bolognesi et al. (2025) e o Quadro 1; cinza indica partido sem classificação.')])]
 
 # 3.3 por UF
 S += [Paragraph('3.3 Conjunto de sete partidos por unidade da federação', H2),
@@ -552,9 +565,10 @@ S += [Paragraph('4 CONSIDERAÇÕES FINAIS', H1),
                 'e não foi conferida com o inteiro teor do acórdão. Terceira, empates exatos de média ou de votação não '
                 'foram verificados nem tratados por critério de idade. Quarta, o cenário B mantém os votos observados; uma '
                 'federação diferente poderia alterar candidaturas, lista e votação. Quinta, os votos faltantes são uma '
-                'medida de sensibilidade com acréscimo puro de votos, e a classificação ideológica de Zucco Jr. (2011) cobre apenas os partidos existentes até 2009, de modo que a '
-                'correspondência com os partidos de 2026 é uma premissa e uma parcela expressiva da Câmara permanece sem classificação, e a posição do PL na extrema-direita é atribuição do autor, '
-                'divergente de Zucco Jr. (2011).',
+                'medida de sensibilidade com acréscimo puro de votos. Sexta, a classificação ideológica de Bolognesi et al. (2025) '
+                'refere-se a 2022, deriva de pesquisa com especialistas (978 convidados, 48,8% de retorno), não cobre o Missão e '
+                'atribui ao PRD um valor derivado da média de PTB e Patriota; as categorias "extrema" indicam apenas posição '
+                'na escala e não o caráter antissistema do partido.',
                 CORPO),
       Paragraph('Recomenda-se, em trabalhos futuros, conferir o acórdão do STF, repetir o cálculo com os dados finais '
                 'totalizados do TSE, tratar empates segundo o art. 110 do Código Eleitoral e estimar cenários em que os votos '
@@ -562,6 +576,10 @@ S += [Paragraph('4 CONSIDERAÇÕES FINAIS', H1),
 
 # --- referências (NBR 6023)
 refs = [
+    'BOLOGNESI, Bruno; RIBEIRO, Ednaldo; CODATO, Adriano; SILVA, Bruno Fernando da. O desaparecimento do centro '
+    'ideológico no sistema partidário brasileiro: a classificação mais atualizada dos experts. <b>Opinião Pública</b>, '
+    'Campinas, v. 31, e31120, 2025. DOI: 10.1590/1807-0191202531120. Dados: https://doi.org/10.7910/DVN/MFIXKW. '
+    'Disponível em: https://periodicos.sbu.unicamp.br/ojs/index.php/op/article/view/8682072. Acesso em: 13 out. 2026.',
     'BRASIL. <b>Constituição da República Federativa do Brasil de 1988</b>. Brasília, DF: Presidência da República, 1988. '
     'Art. 45.',
     'BRASIL. <b>Lei nº 4.737, de 15 de julho de 1965</b>. Institui o Código Eleitoral. Brasília, DF: Presidência da '
@@ -577,11 +595,6 @@ refs = [
     'https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_partido_munzona/votacao_partido_munzona_2026.zip e '
     'https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_candidato_munzona/votacao_candidato_munzona_2026.zip. '
     'Acesso em: 13 out. 2026.',
-    'ZUCCO JR., Cesar. Esquerda, direita e governo: a ideologia dos partidos políticos brasileiros. In: POWER, Timothy J.; '
-    'ZUCCO JR., Cesar (org.). <b>O Congresso por ele mesmo</b>: autopercepção da Câmara dos Deputados. Belo Horizonte: '
-    'Editora UFMG, 2011. p. 37-60. Disponível em: https://professor.fgv.br/sites/default/files/users/user62/'
-    'ChapterEsquerdaDireitaeGoverno_.pdf. Dados de edição (organizadores, editora) a conferir, pois a cópia consultada '
-    'contém apenas o capítulo.',
 ]
 S += [Paragraph('REFERÊNCIAS', HU)] + [Paragraph(r, REF) for r in refs]
 
